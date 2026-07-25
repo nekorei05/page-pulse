@@ -2,7 +2,6 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const { calculateHealthScore } = require("../utils/calculateHealthScore");
 
-
 const auditPage = async (url) => {
   const startTime = Date.now();
 
@@ -13,13 +12,20 @@ const auditPage = async (url) => {
     },
   });
 
+  const contentType = response.headers["content-type"] || "";
+
+  if (!contentType.includes("text/html")) {
+    throw new Error("NON_HTML_RESPONSE");
+  }
+
   const responseTime = Date.now() - startTime;
 
   const html = response.data;
   const $ = cheerio.load(html);
 
-  //extract
-const metaDescription =
+  const title = $("title").text().trim();
+
+  const metaDescription =
     $('meta[name="description"]').attr("content") || "";
 
   const h1Count = $("h1").length;
@@ -34,35 +40,36 @@ const metaDescription =
     .trim()
     .split(" ").length;
 
-    //health score
-    const healthScore = calculateHealthScore({
+  // health score
+  const healthScore = calculateHealthScore({
     title,
     metaDescription,
     h1Count,
     imagesMissingAlt,
   });
-  
 
-return {
+  return {
     healthScore,
 
     performance: {
-        status: response.status,
-        responseTime,
+      status: response.status,
+      responseTime,
     },
 
     seo: {
-        title,
-        metaDescription,
-        h1Count,
+      title,
+      metaDescription,
+      h1Count,
     },
 
     accessibility: {
-        imagesMissingAlt,
+      imagesMissingAlt,
     },
 
     content: {
-        wordCount,
+      wordCount,
     },
+  };
 };
+
 module.exports = { auditPage };

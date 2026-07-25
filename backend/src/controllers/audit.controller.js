@@ -1,71 +1,75 @@
-const axios = require("axios");
-const cheerio = require("cheerio");
-const { calculateHealthScore } = require("../utils/calculateHealthScore");
+const { auditPage } = require("../services/audit.service");
+const { isValid } = require("../utils/validateUrl");
 
-const auditPage = async (url) => {
-  const startTime = Date.now();
+const auditWebsite = async (req, res) => {
+  try {
+    const { url } = req.body;
 
-  const response = await axios.get(url, {
-    timeout: 10000,
-    headers: {
-      "User-Agent": "PagePulse/1.0",
-    },
-  });
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        message: "URL is required.",
+      });
+    }
 
-  const responseTime = Date.now() - startTime;
+    if (!isValid(url)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid URL.",
+      });
+    }
 
-  const html = response.data;
-  const $ = cheerio.load(html);
+    const result = await auditPage(url);
 
-  // extract
-  const title = $("title").text().trim();
+    return res.status(200).json({
+      success: true,
+      url,
+      auditedAt: new Date().toISOString(),
+      data: result,
+    });
 
-  const metaDescription =
-    $('meta[name="description"]').attr("content") || "";
+  } catch (error) {
 
-  const h1Count = $("h1").length;
+    console.log(error.code);
+    console.log(error.message);
 
-  const imagesMissingAlt = $("img")
-    .filter((_, img) => !$(img).attr("alt"))
-    .length;
+    if (error.code === "ECONNABORTED") {
+      return res.status(408).json({
+        success: false,
+        message: "Website took too long to respond.",
+      });
+    }
 
-  const wordCount = $("body")
-    .text()
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ").length;
+    //website doesnt exist
+    if (error.code === "ENOTFOUND") {
+      return res.status(404).json({
+        success: false,
+        message: "Website could not be reached.",
+      });
+    }
 
-  // health score
-  const healthScore = calculateHealthScore({
-    title,
-    metaDescription,
-    h1Count,
-    imagesMissingAlt,
-  });
+    // Non HTML page
+    if (error.message === "NON_HTML_RESPONSE") {
+      return res.status(400).json({
+        success: false,
+        message: "The provided URL does not contain an HTML page.",
+      });
+    }
 
+    // Website returns error
+    if (error.response) {
+      return res.status(error.response.status).json({
+        success: false,
+        message: `Website returned status ${error.response.status}.`,
+      });
+    }
 
-  return {
-    healthScore,
-
-    performance: {
-      status: response.status,
-      responseTime,
-    },
-
-    seo: {
-      title,
-      metaDescription,
-      h1Count,
-    },
-
-    accessibility: {
-      imagesMissingAlt,
-    },
-
-    content: {
-      wordCount,
-    },
-  };
+    // Unknown
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while auditing the website.",
+    });
+  }
 };
 
-module.exports = { auditPage };
+module.exports = { auditWebsite };
