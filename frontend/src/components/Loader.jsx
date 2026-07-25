@@ -1,5 +1,5 @@
 function Loader() {
-  return <p>Auditing website...</p>;
+  <p className="loader"> Auditing website...</p>
 }
 
 export default Loader;
