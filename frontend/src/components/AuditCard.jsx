@@ -39,7 +39,6 @@ function AuditCard({ data }) {
   return (
     <div className="audit-report">
 
-      {/* Overall Health */}
 
       <div className="card hero-card">
 
@@ -86,9 +85,15 @@ function AuditCard({ data }) {
             <strong>Status</strong>
 
             <p>
-              <span className="status-ok">
-                {performance.status} OK
-              </span>
+              <span
+  className={
+    performance.status >= 200 && performance.status < 300
+      ? "status-ok"
+      : "status-error"
+  }
+>
+  {performance.status}
+</span>
             </p>
 
           </div>

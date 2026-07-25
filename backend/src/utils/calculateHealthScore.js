@@ -8,9 +8,13 @@ function calculateHealthScore
     let score = 100;
     if(!title) score -=15;
     if(!metaDescription) score -=15;
-    if(h1Count===0) score -=10;
+   if (h1Count === 0) {
+    score -= 10;
+} else if (h1Count > 1) {
+    score -= 10;
+}
 
-    score-=imagesMissingAlt*5;
+      score -= Math.min(imagesMissingAlt * 2, 30);
 
     return Math.max(score,0);
 
